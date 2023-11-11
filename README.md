@@ -40,7 +40,7 @@
     2. User Table
         CREATE TABLE users (
             userId BIGSERIAL PRIMARY KEY,
-            email VARCHAR(255) NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
             password VARCHAR(255) NOT NULL,
             jwtToken VARCHAR(255) NOT NULL,
             createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
