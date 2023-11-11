@@ -53,7 +53,6 @@ class Movies {
             const status = await movieModel.update(data,{
                 where: where
             })
-            console.log(status)
             return status && status.length && status[0] == 1 ? true : false;
         }catch(error){
             Logger.error(`Error updateMovie ${error}`)

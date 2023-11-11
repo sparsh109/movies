@@ -10,87 +10,36 @@ class users {
         try{
             let password = req.body.password;
             const emailId = req.body.emailId.toLowerCase();
+            let hashedPassword;
+            let registrationStatus = 0;
 
             //Check if email already exists
-            const user = await usersQuery.getUser(['userId'],{email: emailId})
-            if(user){
-                return sendResponse(res, true, StatusConstant.STATUS_CODE.SUCCESS, StatusConstant.STATUS_MESSAGE.TYPE_SUCCESS,  StatusConstant.STATUS_MESSAGE.EMAIL_ALREADY_EXIST_INFO, {});
+            let user = await usersQuery.getUser(['userId', 'password'],{email: emailId})
+            
+            if(!user){ // Register user
+                hashedPassword = await hashPassword(password);
+                const newUser = await usersQuery.createUser({
+                    email: emailId,
+                    password: hashedPassword,
+                    jwtToken: ''
+                });
+
+                if(!newUser){
+                    return sendResponse(res, false, StatusConstant.STATUS_CODE.ERROR, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.SERVER_ERROR, {});
+                }
+
+                user = {
+                    password: hashedPassword,
+                    userId: newUser.userId
+                }
+                registrationStatus = 1;
             }
+            
+            const loginStatus = await logIn(emailId, password, user.password, user.userId);
 
-            //Create token for session management
-            const token = await generateToken({emailId});
-
-            if(!token){
-                return sendResponse(res, false, StatusConstant.STATUS_CODE.ERROR, StatusConstant.STATUS_MESSAGE.SERVER_ERROR,  StatusConstant.STATUS_MESSAGE.SERVER_ERROR, {});
-            }
-
-            password = await hashPassword(password);
-
-            //Create a new user
-            const status = await usersQuery.createUser({
-                email: emailId,
-                password: password,
-                jwtToken: token
-            });
-
-            if(!status){
-                return sendResponse(res, false, StatusConstant.STATUS_CODE.ERROR, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.SERVER_ERROR, {});
-            }
-
-            //Set updated token to redis
-            await global.redis.set(token, JSON.stringify(token), 'ex', StatusConstant.TOKEN_EXPIRY.REDIS);
-
-            const response = {
-                token: token
-            }
-            return sendResponse(res, true, StatusConstant.STATUS_CODE.SUCCESS, StatusConstant.STATUS_MESSAGE.TYPE_SUCCESS,  StatusConstant.STATUS_MESSAGE.ACCOUNT_CREATED, response);
+            return sendResponse(res, loginStatus.status, loginStatus.code, loginStatus.title,  registrationStatus ? StatusConstant.STATUS_MESSAGE.ACCOUNT_CREATED : loginStatus.message, loginStatus.response);
         }catch(error){
             Logger.error(`Error: ${error}`);
-            return sendResponse(res, false, StatusConstant.STATUS_CODE.SERVER_ERROR, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.SERVER_ERROR, {});
-        }
-    }
-
-    async Login(req, res) {
-        try{
-            const {password} = req.body;
-            const emailId = req.body.emailId.toLowerCase();
-
-            //Check if email exists
-            const user = await usersQuery.getUser(['userId', 'password'],{email: emailId})
-
-            if(!user){
-                return sendResponse(res, true, StatusConstant.STATUS_CODE.Not_found, StatusConstant.STATUS_MESSAGE.TYPE_SUCCESS,  StatusConstant.STATUS_MESSAGE.UNAUTHORIZED_USER, {});
-            }
-
-            const isPasswordMatched = await comparePasswords(password, user.password)
-
-            if(!isPasswordMatched){
-                return sendResponse(res, true, StatusConstant.STATUS_CODE.Not_found, StatusConstant.STATUS_MESSAGE.TYPE_SUCCESS,  StatusConstant.STATUS_MESSAGE.UNAUTHORIZED_USER, {});
-            }
-
-            //Create token for session management
-            const token = await generateToken({emailId, userId: user.userId});
-            
-            if(!token){
-                return sendResponse(res, false, StatusConstant.STATUS_CODE.ERROR, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.SERVER_ERROR, {});
-            }
-
-            //Update user token in db
-            const status = await usersQuery.updateUser({jwtToken: token}, {userId: user.userId})
-
-            if(!status)
-                return sendResponse(res, false, StatusConstant.STATUS_CODE.ERROR, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.SERVER_ERROR, {});
-            
-            //Set updated token to redis
-            await global.redis.set(token, JSON.stringify(token), 'ex', StatusConstant.TOKEN_EXPIRY.REDIS);
-
-            //Update token
-            const response = {
-                token: token
-            }
-            return sendResponse(res, true, StatusConstant.STATUS_CODE.SUCCESS, StatusConstant.STATUS_MESSAGE.TYPE_SUCCESS,  StatusConstant.STATUS_MESSAGE.LOGGED_IN, response);
-        }catch(error){
-            Logger.error(`Error Login: ${error}`);
             return sendResponse(res, false, StatusConstant.STATUS_CODE.SERVER_ERROR, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.SERVER_ERROR, {});
         }
     }
@@ -113,6 +62,71 @@ class users {
             Logger.error(`Error Logout: ${error}`);
             return sendResponse(res, false, StatusConstant.STATUS_CODE.SERVER_ERROR, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.SERVER_ERROR, {});
         }
+    }
+}
+
+
+const logIn = async (emailId, plainTextPassword, hashedPassword, userId) => {
+    try{
+        const isPasswordMatched = await comparePasswords(plainTextPassword, hashedPassword)
+
+        if(!isPasswordMatched){
+            return {
+                status: true,
+                code: StatusConstant.STATUS_CODE.Not_found,
+                title: StatusConstant.STATUS_MESSAGE.TYPE_SUCCESS,
+                message: StatusConstant.STATUS_MESSAGE.UNAUTHORIZED_USER,
+                response: {}
+            }
+        }
+
+        //Create token for session management
+        const token = await generateToken({emailId, userId});
+        
+        if(!token){
+            return {
+                status: false,
+                code: StatusConstant.STATUS_CODE.ERROR,
+                title: StatusConstant.STATUS_MESSAGE.TYPE_ERROR,
+                message: StatusConstant.STATUS_MESSAGE.SERVER_ERROR,
+                response: {}
+            }
+        }
+
+        //Update user token in db
+        const status = await usersQuery.updateUser({jwtToken: token}, {userId})
+
+        if(!status){
+            return {
+                status: false,
+                code: StatusConstant.STATUS_CODE.ERROR,
+                title: StatusConstant.STATUS_MESSAGE.TYPE_ERROR,
+                message: StatusConstant.STATUS_MESSAGE.SERVER_ERROR,
+                response: {}
+            }
+        }
+        
+        //Set updated token to redis
+        await global.redis.set(token, JSON.stringify(token), 'ex', StatusConstant.TOKEN_EXPIRY.REDIS);
+
+        return {
+            status: true,
+            code: StatusConstant.STATUS_CODE.SUCCESS,
+            title: StatusConstant.STATUS_MESSAGE.TYPE_SUCCESS,
+            message: StatusConstant.STATUS_MESSAGE.LOGGED_IN,
+            response: {
+                token: token
+            }
+        }
+    }catch(error){
+        Logger.error(`Error logIn: ${error}`);
+        return {
+            status: false,
+            code: StatusConstant.STATUS_CODE.ERROR,
+            title: StatusConstant.STATUS_MESSAGE.TYPE_ERROR,
+            message: StatusConstant.STATUS_MESSAGE.SERVER_ERROR,
+            response: {}
+        };
     }
 }
 

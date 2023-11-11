@@ -32,7 +32,7 @@ class Users {
         try{
             // Create a new user
             const newUser = await userModel.create(data);
-            return newUser && newUser.dataValues && newUser.dataValues.userId ? true : false
+            return newUser && newUser.dataValues && newUser.dataValues.userId ? newUser.dataValues : false
         }catch(error){
             Logger.error(`Error createUser ${error}`)
             return false

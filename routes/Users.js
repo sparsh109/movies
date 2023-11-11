@@ -6,9 +6,8 @@ const { CheckToken, ValidateUser } = require('../src/middleware')
 
 router
 
-    .post('/signup', ValidateUser.validateEmail, ValidateUser.validatePassword, ValidateUser.isRequestValidated, UserController.SignUp)
-
-    .post('/login', ValidateUser.validateEmail, ValidateUser.validatePassword, ValidateUser.isRequestValidated, UserController.Login)
+    // Register or Login user
+    .post('/', ValidateUser.validateEmail, ValidateUser.validatePassword, ValidateUser.isRequestValidated, UserController.SignUp)
 
     /* Token verification middleware */
     .use(CheckToken.checkToken)

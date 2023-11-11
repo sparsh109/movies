@@ -79,7 +79,7 @@ class movie {
                 castMembers: cast, 
                 genre, 
                 releaseDate
-            },{addedBy: userId, movieId})
+            },{addedBy: userId, movieId, status: StatusConstant.MOVIE_STATUS.ACTIVE})
 
             if(!status)
                 return sendResponse(res, false, StatusConstant.STATUS_CODE.ERROR, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.SERVER_ERROR, {});
@@ -97,7 +97,7 @@ class movie {
             const { userId } = req.user;
             const movieId = req.query.movieId
             
-            const status = await movieQuery.updateMovies({
+            const status = await movieQuery.updateMovie({
                 status:  StatusConstant.MOVIE_STATUS.DELETED
             },{addedBy: userId, movieId})
 
