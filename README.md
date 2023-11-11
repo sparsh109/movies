@@ -23,6 +23,31 @@
     REDIS_PORT=6379
 # POSTMAN URL
     https://api.postman.com/collections/16867262-4029f895-cadb-4b19-ac03-3f5d93de8454?access_key=PMAT-01HEYSR0A10TGRV3AMEFD700XA
+# DB Queries
+    1. Movies Table
+        CREATE TABLE movies (
+            movieId BIGSERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            rating VARCHAR(255) NOT NULL,
+            castMembers VARCHAR(255)[] NOT NULL,
+            genre VARCHAR(255) NOT NULL,
+            releaseDate TIMESTAMPTZ NOT NULL,
+            addedBy BIGINT NOT NULL,
+            status SMALLINT DEFAULT 1 NOT NULL,
+            createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+        );
+    2. User Table
+        CREATE TABLE users (
+            userId BIGSERIAL PRIMARY KEY,
+            email VARCHAR(255) NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            jwtToken VARCHAR(255) NOT NULL,
+            createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+        );
+
+
 # Start your project by installing project dependencies 
     Command:- npm i
 # Project run command
