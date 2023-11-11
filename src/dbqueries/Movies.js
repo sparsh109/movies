@@ -41,6 +41,20 @@ class Movies {
         }
     }
 
+    async getASingleMovie (addedBy, movieId) {
+        try{
+            const movie = await movieModel.findOne({
+                attributes: ['movieId'],
+                where: {addedBy, movieId,  status:  StatusConstant.MOVIE_STATUS.ACTIVE}
+            })
+
+            return movie && movie.dataValues && movie.dataValues.movieId ? true : false;
+        }catch(error){
+            Logger.error(`Error createMovie ${error}`)
+            return false
+        }
+    }
+
 
     /**
      * 

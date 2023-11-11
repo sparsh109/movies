@@ -73,6 +73,10 @@ class movie {
             const { userId } = req.user;
             const {name, rating, cast, genre, releaseDate, movieId} = req.body
 
+            const checkMovie = await movieQuery.getASingleMovie(userId, movieId);
+            if(!checkMovie)
+                return sendResponse(res, false, StatusConstant.STATUS_CODE.WRONG_MOVIE, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.WRONG_MOVIE, {});
+
             const status = await movieQuery.updateMovie({
                 name, 
                 rating, 
@@ -97,6 +101,10 @@ class movie {
             const { userId } = req.user;
             const movieId = req.query.movieId
             
+            const checkMovie = await movieQuery.getASingleMovie(userId, movieId);
+            if(!checkMovie)
+                return sendResponse(res, false, StatusConstant.STATUS_CODE.WRONG_MOVIE, StatusConstant.STATUS_MESSAGE.TYPE_ERROR,  StatusConstant.STATUS_MESSAGE.WRONG_MOVIE, {});
+
             const status = await movieQuery.updateMovie({
                 status:  StatusConstant.MOVIE_STATUS.DELETED
             },{addedBy: userId, movieId})
